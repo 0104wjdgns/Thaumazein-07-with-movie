@@ -1,0 +1,218 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>리더스클럽 6회차 — 화면</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  body{ overflow:hidden; }
+  body::before{
+    content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background:repeating-linear-gradient(to right,
+      transparent 0 calc(25% - 1px), rgba(196,149,79,.10) calc(25% - 1px) 25%);
+  }
+  .slide{
+    position:fixed; inset:0; z-index:1;
+    display:flex; flex-direction:column; justify-content:center;
+    padding:clamp(28px,6vw,96px); padding-bottom:clamp(70px,8vw,120px);
+    opacity:0; visibility:hidden; transition:opacity .45s ease;
+  }
+  .slide.is-on{ opacity:1; visibility:visible; }
+  .eyebrow{ font-size:clamp(11px,1.1vw,14px); margin-bottom:clamp(16px,2.4vw,28px); }
+
+  /* 표지 */
+  .cv-date{ font-family:var(--serif); font-size:clamp(15px,1.8vw,24px); color:var(--brass); letter-spacing:.2em; }
+  .cv-host{ font-size:clamp(14px,1.7vw,22px); color:var(--vellum-2); margin-top:clamp(18px,2.6vw,32px); line-height:1.7; }
+  .cv-round{ font-size:clamp(38px,7vw,104px); margin-top:clamp(10px,1.4vw,18px); }
+  .cv-rule{ width:clamp(60px,10vw,140px); height:3px; background:var(--brass); margin-top:clamp(26px,4vw,52px); }
+
+  /* 소개 2단 */
+  .two{ display:grid; grid-template-columns:1fr 1fr; gap:clamp(28px,5vw,80px); align-items:start; }
+  .pane{ display:grid; grid-template-columns:minmax(0,150px) minmax(0,1fr); gap:clamp(16px,2.4vw,30px); }
+  .art{
+    aspect-ratio:2/3; background:var(--ink-2); border:1px dashed rgba(196,149,79,.4);
+    display:flex; align-items:center; justify-content:center; overflow:hidden;
+  }
+  .art img{ width:100%; height:100%; object-fit:cover; }
+  .art span{ font-size:11px; color:var(--vellum-3); text-align:center; padding:10px; }
+  .pane h2{ font-family:var(--serif); font-weight:800; font-size:clamp(19px,2.3vw,34px); line-height:1.3; }
+  .pane .meta{ font-size:clamp(11px,1.05vw,14px); color:var(--brass); letter-spacing:.12em; margin:10px 0 14px; }
+  .pane p{ font-size:clamp(13px,1.25vw,17px); line-height:1.85; color:var(--vellum-2); white-space:pre-line; }
+  .big-theme{ font-family:var(--serif); font-weight:800; font-size:clamp(30px,4vw,60px); letter-spacing:.06em; }
+
+  /* 진행 순서 */
+  .steps{ display:grid; gap:clamp(10px,1.5vw,18px); margin-top:clamp(24px,3.4vw,40px); max-width:60ch; }
+  .step{ display:flex; gap:clamp(14px,2vw,26px); align-items:baseline; }
+  .step b{ font-family:var(--serif); color:var(--brass); font-size:clamp(14px,1.5vw,20px); flex:0 0 auto; }
+  .step span{ font-size:clamp(15px,1.75vw,24px); line-height:1.65; }
+
+  /* 질문 */
+  .q-text{ font-size:clamp(30px,5.2vw,76px); max-width:20ch; }
+  .q-opts{ display:grid; gap:clamp(10px,1.4vw,18px); margin-top:clamp(30px,4.6vw,60px);
+           grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); }
+  .opt{ display:flex; align-items:baseline; gap:14px; background:var(--ink-2);
+        border-left:2px solid var(--brass); padding:clamp(13px,1.7vw,21px) clamp(15px,2vw,25px); }
+  .opt-letter{ font-size:clamp(17px,1.9vw,25px); }
+  .opt-label{ font-size:clamp(15px,1.65vw,22px); line-height:1.5; }
+  .tally-line{
+    margin-top:clamp(24px,3.4vw,44px); font-size:clamp(13px,1.4vw,18px);
+    color:var(--vellum-2); letter-spacing:.06em;
+    display:flex; align-items:center; gap:clamp(12px,1.6vw,20px); flex-wrap:wrap;
+  }
+  .done{
+    background:var(--jade); color:#08160F; font-weight:600; letter-spacing:.04em;
+    padding:clamp(7px,.9vw,11px) clamp(13px,1.5vw,20px); border-radius:3px;
+    animation:pop .4s cubic-bezier(.2,.9,.3,1.3) backwards;
+  }
+  @keyframes pop{ from{ opacity:0; transform:scale(.85); } }
+
+  /* 마무리 */
+  .end-word{ font-size:clamp(34px,6vw,88px); line-height:1.3; }
+  .end-note{ font-size:clamp(14px,1.7vw,22px); color:var(--vellum-2); margin-top:clamp(22px,3vw,38px); letter-spacing:.06em; }
+
+  /* 분포 */
+  .d-q{ font-size:clamp(18px,2.4vw,32px); color:var(--vellum-2); max-width:40ch; }
+  .dist{ flex:1; margin-top:clamp(20px,3vw,36px); gap:clamp(8px,1.4vw,20px); }
+  .chip{ width:clamp(48px,6vw,86px); height:clamp(48px,6vw,86px); font-size:clamp(12px,1.3vw,17px); }
+  .col-letter{ font-size:clamp(20px,2.6vw,34px); }
+  .col-label{ font-size:clamp(11px,1.2vw,15px); }
+  .col-count{ font-size:clamp(11px,1.1vw,13px); }
+
+  @media (max-width:900px){ .two{ grid-template-columns:1fr; } .pane{ grid-template-columns:110px 1fr; } }
+</style>
+
+<div id="stage"></div>
+
+<div class="nav">
+  <button id="prev">←</button>
+  <button id="next">→</button>
+  <span id="loc"></span>
+  <span class="spacer"></span>
+  <span class="live" id="live"></span>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="db.js"></script>
+<script>
+const C = window.CONFIG, L = ["A","B","C","D"];
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+const slides = [{t:"cover"},{t:"intro"},{t:"howto"}];
+C.questions.forEach((_,q) => { slides.push({t:"q",q}); slides.push({t:"dist",q}); });
+slides.push({t:"end"});
+
+let cur = 0;
+const stage = document.getElementById("stage");
+
+function art(src,label){
+  return `<div class="art">${src ? `<img src="${esc(src)}" alt="${esc(label)}"
+    onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${esc(label)}'}))">`
+    : `<span>${esc(label)}</span>`}</div>`;
+}
+
+function body(s){
+  if(s.t === "cover") return `
+    <div class="cv-date">${esc(C.cover.date)}</div>
+    <div class="cv-host">${esc(C.cover.host)}</div>
+    <div class="display cv-round">${esc(C.cover.round)}</div>
+    <div class="cv-rule"></div>`;
+
+  if(s.t === "intro") return `
+    <div class="eyebrow">오늘의 주제와 텍스트</div>
+    <div class="two">
+      <div class="pane">
+        ${art(C.magazine.image,"매거진 표지")}
+        <div>
+          <div class="big-theme">${esc(C.magazine.theme)}</div>
+          <div class="meta">${esc(C.magazine.title)}</div>
+          <p>${esc(C.magazine.body)}</p>
+        </div>
+      </div>
+      <div class="pane">
+        ${art(C.film.image,"영화 포스터")}
+        <div>
+          <h2>${esc(C.film.title)}</h2>
+          <div class="meta">${esc(C.film.meta)}</div>
+          <p>${esc(C.film.body)}</p>
+        </div>
+      </div>
+    </div>`;
+
+  if(s.t === "howto") return `
+    <div class="eyebrow">오늘 이렇게 진행합니다</div>
+    <div class="steps">${C.howto.map((h,i) =>
+      `<div class="step"><b>${String(i+1).padStart(2,"0")}</b><span>${esc(h)}</span></div>`).join("")}</div>`;
+
+  if(s.t === "end") return `
+    <div class="display end-word">${esc(C.closing.line).replace(/\n/g,"<br>")}</div>
+    <div class="cv-rule"></div>
+    <div class="end-note">${esc(C.closing.note)}</div>`;
+
+  const Q = C.questions[s.q];
+
+  if(s.t === "q") return `
+    <div class="eyebrow">질문 ${s.q+1} — 작성 시간</div>
+    <div class="display q-text">${esc(Q.text)}</div>
+    <div class="q-opts">${Q.options.map((o,i) =>
+      `<div class="opt"><span class="opt-letter">${L[i]}</span><span class="opt-label">${esc(o)}</span></div>`).join("")}</div>
+    <div class="tally-line" data-count="${s.q}"></div>`;
+
+  const rows = DB.forQ(s.q);
+  return `
+    <div class="eyebrow">질문 ${s.q+1} — 선택 분포</div>
+    <div class="d-q">${esc(Q.text)}</div>
+    <div class="dist">${Q.options.map((o,i) => {
+      const m = rows.filter(r => r.choice === i);
+      return `<div class="col">
+        <div class="col-stack">${m.map((r,k) =>
+          `<div class="chip" style="animation-delay:${100+k*90}ms">${esc((r.user_name||("#"+r.user_no)).slice(0,4))}</div>`).join("")}</div>
+        <div class="col-base">
+          <div class="col-letter">${L[i]}</div>
+          <div class="col-label">${esc(o)}</div>
+          <div class="col-count">${m.length}명</div>
+        </div>
+      </div>`;
+    }).join("")}</div>`;
+}
+
+function render(){
+  stage.innerHTML = slides.map((s,i) => `<section class="slide" data-i="${i}">${body(s)}</section>`).join("");
+  paint();
+  show(cur);
+}
+function paint(){
+  document.querySelectorAll("[data-count]").forEach(el => {
+    const q = +el.dataset.count, n = DB.forQ(q).length;
+    el.innerHTML = `<span>제출 ${n} / ${C.participants}명</span>`
+      + (n >= C.participants ? `<span class="done">전원 답안 제출 완료</span>` : "");
+  });
+}
+function show(i){
+  cur = Math.max(0, Math.min(slides.length-1, i));
+  history.replaceState(null, "", "#" + cur);
+  document.querySelectorAll(".slide").forEach(el => el.classList.toggle("is-on", +el.dataset.i === cur));
+  document.getElementById("loc").textContent = `${cur+1} / ${slides.length}`;
+  document.getElementById("prev").disabled = cur === 0;
+  document.getElementById("next").disabled = cur === slides.length-1;
+}
+
+document.getElementById("next").onclick = () => show(cur+1);
+document.getElementById("prev").onclick = () => show(cur-1);
+addEventListener("keydown", e => {
+  if(e.key === "ArrowRight" || e.key === " "){ e.preventDefault(); show(cur+1); }
+  if(e.key === "ArrowLeft") show(cur-1);
+});
+
+const liveEl = document.getElementById("live");
+liveEl.textContent = DB.isLive ? "실시간 연결됨" : "연습 모드";
+liveEl.classList.toggle("is-off", !DB.isLive);
+
+DB.onChange(() => {
+  const s = slides[cur];
+  if(s.t === "dist") render(); else paint();
+});
+DB.init();
+const back = parseInt(location.hash.slice(1), 10);
+if(!isNaN(back)) cur = Math.max(0, Math.min(slides.length-1, back));
+render();
+</script>

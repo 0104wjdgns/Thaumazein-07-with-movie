@@ -1,0 +1,206 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>리더스클럽 6회차</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  body{ display:flex; flex-direction:column; }
+  main{ flex:1; overflow-y:auto; padding:26px 20px 92px; }
+  .eyebrow{ margin-bottom:20px; }
+
+  .h{ font-family:var(--serif); font-weight:800; font-size:27px; line-height:1.35; }
+  .sub{ color:var(--vellum-2); font-size:14px; line-height:1.7; margin-top:14px; }
+
+  /* 입장 */
+  .who{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:22px 0 26px; }
+  .who button{
+    font:inherit; font-size:15px; padding:15px 0; cursor:pointer;
+    background:var(--ink-2); border:1px solid var(--ink-3); border-radius:3px; color:var(--vellum-2);
+  }
+  .who button.is-sel{ background:var(--azur); border-color:var(--azur); color:#fff; }
+  .field{
+    width:100%; font:inherit; font-size:16px; color:var(--vellum);
+    background:var(--ink-2); border:1px solid var(--ink-3); border-radius:3px; padding:14px;
+  }
+  .field:focus{ border-color:var(--azur); }
+  .go{
+    width:100%; font:inherit; font-size:16px; font-weight:600; cursor:pointer;
+    margin-top:16px; padding:16px; border:none; border-radius:3px;
+    background:var(--azur); color:#fff;
+  }
+  .go:disabled{ background:var(--ink-3); color:var(--vellum-3); cursor:default; }
+
+  /* 선택지 */
+  .picks{ display:grid; gap:10px; margin-top:26px; }
+  .pick{
+    display:flex; align-items:center; gap:15px; text-align:left; cursor:pointer;
+    font:inherit; font-size:16px; line-height:1.5; color:var(--vellum);
+    background:var(--ink-2); border:1px solid var(--ink-3); border-left:2px solid var(--brass);
+    border-radius:3px; padding:17px 18px;
+  }
+  .pick .l{ font-family:var(--serif); font-weight:700; font-size:19px; color:var(--brass); flex:0 0 auto; }
+  .pick.is-sel{ border-color:var(--azur); border-left-color:var(--azur); background:rgba(67,97,232,.14); }
+  .pick.is-sel .l{ color:var(--azur); }
+
+  /* 작성 */
+  .chosen{
+    display:flex; align-items:center; gap:13px; margin-top:22px;
+    padding:15px 17px; background:var(--ink-2); border-left:2px solid var(--azur); border-radius:3px;
+  }
+  .chosen .l{ font-family:var(--serif); font-weight:700; font-size:19px; color:var(--azur); }
+  .chosen .t{ font-size:16px; }
+  .prompt{ font-size:14px; color:var(--brass); letter-spacing:.04em; margin:24px 0 10px; }
+  textarea.field{ min-height:190px; resize:vertical; line-height:1.75; }
+  .note{ font-size:12px; color:var(--vellum-3); margin-top:11px; line-height:1.6; }
+  .saved{ font-size:13px; color:var(--azur); margin-top:12px; }
+
+  /* 집계 */
+  .dist{ margin-top:26px; height:230px; gap:7px; }
+  .chip{ width:34px; height:34px; font-size:11px; }
+  .col-letter{ font-size:19px; }
+  .col-label{ font-size:11px; }
+  .col-count{ font-size:10px; }
+  .wait{ font-size:14px; color:var(--vellum-2); margin-top:20px; }
+</style>
+
+<main id="view"></main>
+
+<div class="nav">
+  <button id="prev">←</button>
+  <button id="next">→</button>
+  <span id="loc"></span>
+  <span class="spacer"></span>
+  <span class="live" id="live"></span>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="db.js"></script>
+<script>
+const C = window.CONFIG, L = ["A","B","C","D"];
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+let me = { no:null, name:"" };
+try{ const s = localStorage.getItem("rc6-me"); if(s) me = JSON.parse(s); }catch(e){}
+const remember = () => { try{ localStorage.setItem("rc6-me", JSON.stringify(me)); }catch(e){} };
+
+const draft = {};   // q -> {choice, answer}
+const mine = q => {
+  if(draft[q]) return draft[q];
+  const r = DB.forQ(q).find(r => r.user_no === me.no);
+  return draft[q] = { choice: r ? r.choice : null, answer: r ? (r.answer||"") : "" };
+};
+
+const steps = [{t:"enter"}];
+C.questions.forEach((_,q) => { steps.push({t:"q",q}); steps.push({t:"write",q}); steps.push({t:"tally",q}); });
+
+let cur = 0;
+const view = document.getElementById("view");
+
+function render(){
+  const s = steps[cur];
+  view.innerHTML = draw(s);
+  wire(s);
+  document.getElementById("loc").textContent =
+    s.t === "enter" ? "입장" : `질문 ${s.q+1} / ${C.questions.length}`;
+  document.getElementById("prev").disabled = cur === 0;
+  document.getElementById("next").disabled = cur === steps.length-1 || (s.t === "enter" && me.no === null);
+}
+
+function draw(s){
+  if(s.t === "enter") return `
+    <div class="eyebrow">${esc(C.cover.round)}</div>
+    <div class="h">${esc(C.magazine.theme)}</div>
+    <div class="sub">${esc(C.cover.host)}<br>${esc(C.cover.date)}</div>
+    <div class="sub" style="margin-top:22px">참가자 번호를 고르고 이름을 적어주세요.</div>
+    <div class="who">${Array.from({length:C.participants},(_,i) =>
+      `<button data-no="${i+1}" class="${me.no === i+1 ? "is-sel":""}">${i+1}</button>`).join("")}</div>
+    <input class="field" id="nm" placeholder="이름" value="${esc(me.name)}" maxlength="10">
+    <button class="go" id="start" ${me.no === null ? "disabled":""}>시작하기</button>`;
+
+  const Q = C.questions[s.q], d = mine(s.q);
+
+  if(s.t === "q") return `
+    <div class="eyebrow">질문 ${s.q+1}</div>
+    <div class="h">${esc(Q.text)}</div>
+    <div class="picks">${Q.options.map((o,i) =>
+      `<button class="pick ${d.choice === i ? "is-sel":""}" data-i="${i}"><span class="l">${L[i]}</span><span>${esc(o)}</span></button>`).join("")}</div>`;
+
+  if(s.t === "write") return `
+    <div class="eyebrow">질문 ${s.q+1} — 내 답</div>
+    <div class="h" style="font-size:20px">${esc(Q.text)}</div>
+    ${d.choice === null ? `<div class="wait">선택을 먼저 해주세요. ← 버튼으로 돌아갑니다.</div>` : `
+    <div class="chosen"><span class="l">${L[d.choice]}</span><span class="t">${esc(Q.options[d.choice])}</span></div>
+    <div class="prompt">${esc(Q.prompt)}</div>
+    <textarea class="field" id="ans" placeholder="자유롭게 적어주세요">${esc(d.answer)}</textarea>
+    <div class="note">적은 글은 화면에 공개되지 않습니다. 토론이 끝난 뒤에도 다시 열어 고칠 수 있습니다.</div>
+    <button class="go" id="submit">답변 제출</button>
+    <div class="saved" id="saved"></div>`}`;
+
+  const rows = DB.forQ(s.q);
+  return `
+    <div class="eyebrow">질문 ${s.q+1} — 선택 분포</div>
+    <div class="h" style="font-size:20px">${esc(Q.text)}</div>
+    <div class="dist">${Q.options.map((o,i) => {
+      const m = rows.filter(r => r.choice === i);
+      return `<div class="col">
+        <div class="col-stack">${m.map((r,k) =>
+          `<div class="chip" style="animation-delay:${80+k*70}ms">${esc((r.user_name||("#"+r.user_no)).slice(0,3))}</div>`).join("")}</div>
+        <div class="col-base">
+          <div class="col-letter">${L[i]}</div>
+          <div class="col-label">${esc(o)}</div>
+          <div class="col-count">${m.length}명</div>
+        </div>
+      </div>`;
+    }).join("")}</div>
+    <div class="wait">제출 ${rows.length} / ${C.participants}명</div>`;
+}
+
+function wire(s){
+  if(s.t === "enter"){
+    view.querySelectorAll(".who button").forEach(b => b.onclick = () => {
+      me.no = +b.dataset.no; remember(); render();
+    });
+    const nm = document.getElementById("nm");
+    nm.oninput = () => { me.name = nm.value.trim(); remember(); };
+    document.getElementById("start").onclick = () => { if(me.no !== null) go(1); };
+    return;
+  }
+  if(s.t === "q"){
+    view.querySelectorAll(".pick").forEach(b => b.onclick = () => {
+      mine(s.q).choice = +b.dataset.i;
+      render(); setTimeout(() => go(cur+1), 180);
+    });
+    return;
+  }
+  if(s.t === "write"){
+    const ta = document.getElementById("ans");
+    if(!ta) return;
+    ta.oninput = () => { mine(s.q).answer = ta.value; };
+    document.getElementById("submit").onclick = async () => {
+      const d = mine(s.q);
+      const r = await DB.submit({ q:s.q, userNo:me.no, userName:me.name || ("참가자"+me.no),
+                                  choice:d.choice, answer:d.answer });
+      const el = document.getElementById("saved");
+      el.textContent = r.ok ? "제출되었습니다." : "제출에 실패했습니다. 다시 눌러주세요.";
+      if(r.ok) setTimeout(() => go(cur+1), 600);
+    };
+  }
+}
+
+function go(i){
+  cur = Math.max(0, Math.min(steps.length-1, i));
+  view.scrollTop = 0;
+  render();
+}
+document.getElementById("next").onclick = () => go(cur+1);
+document.getElementById("prev").onclick = () => go(cur-1);
+
+const liveEl = document.getElementById("live");
+liveEl.textContent = DB.isLive ? "연결됨" : "연습 모드";
+liveEl.classList.toggle("is-off", !DB.isLive);
+
+DB.onChange(() => { if(steps[cur].t === "tally") render(); });
+DB.init();
+render();
+</script>
