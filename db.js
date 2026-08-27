@@ -8,6 +8,7 @@ const DB = (() => {
   const sb = live ? supabase.createClient(C.supabaseUrl, C.supabaseAnonKey) : null;
 
   let rows = [];                 // {q, user_no, user_name, choice, answer}
+  let lastSig = "";
   const listeners = [];
 
   const emit = () => listeners.forEach(fn => fn(rows));
@@ -17,15 +18,21 @@ const DB = (() => {
     if(i >= 0) rows[i] = row; else rows.push(row);
   }
 
-  async function init(){
-    if(!live){ emit(); return; }
+  async function load(){
+    if(!live) return;
     const { data, error } = await sb.from("responses")
       .select("q,user_no,user_name,choice,answer")
       .eq("session_id", C.sessionId);
-    if(error) console.error(error);
-    rows = data || [];
-    emit();
+    if(error){ console.error(error); return; }
+    const next = data || [];
+    const sig = JSON.stringify(next.map(r => [r.q, r.user_no, r.choice, r.answer]).sort());
+    if(sig === lastSig) return;          // 바뀐 게 없으면 다시 안 그림
+    lastSig = sig; rows = next; emit();
+  }
 
+  async function init(){
+    if(!live){ emit(); return; }
+    await load();                        // 첫 로드
     sb.channel("rc6")
       .on("postgres_changes",
         { event: "*", schema: "public", table: "responses", filter: `session_id=eq.${C.sessionId}` },
@@ -47,5 +54,5 @@ const DB = (() => {
   const forQ = q => rows.filter(r => r.q === q);
   const onChange = fn => { listeners.push(fn); fn(rows); };
 
-  return { init, submit, forQ, onChange, isLive: live };
+  return { init, load, submit, forQ, onChange, isLive: live };
 })();

@@ -190,7 +190,10 @@ function paint(){
 function show(i){
   cur = Math.max(0, Math.min(slides.length-1, i));
   history.replaceState(null, "", "#" + cur);
+  const here = stage.querySelector(`.slide[data-i="${cur}"]`);
+  if(here) here.innerHTML = body(slides[cur]);   // 들어온 슬라이드를 최신 데이터로 다시 그림
   document.querySelectorAll(".slide").forEach(el => el.classList.toggle("is-on", +el.dataset.i === cur));
+  paint();
   document.getElementById("loc").textContent = `${cur+1} / ${slides.length}`;
   document.getElementById("prev").disabled = cur === 0;
   document.getElementById("next").disabled = cur === slides.length-1;
@@ -212,6 +215,7 @@ DB.onChange(() => {
   if(s.t === "dist") render(); else paint();
 });
 DB.init();
+setInterval(() => DB.load(), 4000);   // 4초마다 새 답 확인 (페이지 리로드 아님)
 const back = parseInt(location.hash.slice(1), 10);
 if(!isNaN(back)) cur = Math.max(0, Math.min(slides.length-1, back));
 render();
