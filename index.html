@@ -12,9 +12,9 @@
   .sub{ color:var(--vellum-2); font-size:14px; line-height:1.7; margin-top:14px; }
 
   /* 입장 */
-  .who{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:22px 0 26px; }
+  .who{ display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin:22px 0 26px; }
   .who button{
-    font:inherit; font-size:15px; padding:15px 0; cursor:pointer;
+    font:inherit; font-size:16px; padding:16px 0; cursor:pointer;
     background:var(--ink-2); border:1px solid var(--ink-3); border-radius:3px; color:var(--vellum-2);
   }
   .who button.is-sel{ background:var(--azur); border-color:var(--azur); color:#fff; }
@@ -112,10 +112,9 @@ function draw(s){
     <div class="eyebrow">${esc(C.cover.round)}</div>
     <div class="h">${esc(C.magazine.theme)}</div>
     <div class="sub">${esc(C.cover.host)}<br>${esc(C.cover.date)}</div>
-    <div class="sub" style="margin-top:22px">참가자 번호를 고르고 이름을 적어주세요.</div>
-    <div class="who">${Array.from({length:C.participants},(_,i) =>
-      `<button data-no="${i+1}" class="${me.no === i+1 ? "is-sel":""}">${i+1}</button>`).join("")}</div>
-    <input class="field" id="nm" placeholder="이름" value="${esc(me.name)}" maxlength="10">
+    <div class="sub" style="margin-top:22px">본인 이름을 선택해주세요.</div>
+    <div class="who">${C.names.map((nm,i) =>
+      `<button data-no="${i+1}" class="${me.no === i+1 ? "is-sel":""}">${esc(nm)}</button>`).join("")}</div>
     <button class="go" id="start" ${me.no === null ? "disabled":""}>시작하기</button>`;
 
   const Q = C.questions[s.q], d = mine(s.q);
@@ -159,10 +158,8 @@ function draw(s){
 function wire(s){
   if(s.t === "enter"){
     view.querySelectorAll(".who button").forEach(b => b.onclick = () => {
-      me.no = +b.dataset.no; remember(); render();
+      me.no = +b.dataset.no; me.name = C.names[me.no-1]; remember(); render();
     });
-    const nm = document.getElementById("nm");
-    nm.oninput = () => { me.name = nm.value.trim(); remember(); };
     document.getElementById("start").onclick = () => { if(me.no !== null) go(1); };
     return;
   }
